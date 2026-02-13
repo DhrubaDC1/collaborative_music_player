@@ -617,7 +617,6 @@ class PartySessionController extends StateNotifier<PartyState> {
         );
         continue;
       }
-
       var localPath = remotePath;
       if (!await File(remotePath).exists() &&
           host != null &&
