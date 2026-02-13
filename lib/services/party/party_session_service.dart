@@ -514,7 +514,10 @@ class PartySessionController extends StateNotifier<PartyState> {
 
     server.listen((request) async {
       try {
-        if (request.method != 'GET' || request.uri.path != '/track') {
+        final method = request.method.toUpperCase();
+        final isGet = method == 'GET';
+        final isHead = method == 'HEAD';
+        if ((!isGet && !isHead) || request.uri.path != '/track') {
           request.response.statusCode = HttpStatus.notFound;
           await request.response.close();
           return;
@@ -534,8 +537,31 @@ class PartySessionController extends StateNotifier<PartyState> {
           return;
         }
 
+        final total = await file.length();
+        final rangeHeader = request.headers.value(HttpHeaders.rangeHeader);
+        request.response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
         request.response.headers.contentType = ContentType.binary;
-        await request.response.addStream(file.openRead());
+
+        final range = _parseRange(rangeHeader, total);
+        if (range != null) {
+          final start = range.$1;
+          final end = range.$2;
+          request.response.statusCode = HttpStatus.partialContent;
+          request.response.headers.set(
+            HttpHeaders.contentRangeHeader,
+            'bytes $start-$end/$total',
+          );
+          request.response.headers.contentLength = end - start + 1;
+          if (isGet) {
+            await request.response.addStream(file.openRead(start, end + 1));
+          }
+        } else {
+          request.response.statusCode = HttpStatus.ok;
+          request.response.headers.contentLength = total;
+          if (isGet) {
+            await request.response.addStream(file.openRead());
+          }
+        }
       } catch (_) {
         request.response.statusCode = HttpStatus.internalServerError;
       } finally {
@@ -557,6 +583,40 @@ class PartySessionController extends StateNotifier<PartyState> {
       final title = item['title'] as String;
       final artist = item['artist'] as String?;
       final durationMs = item['durationMs'] as int?;
+
+      if (remotePath.startsWith('http://') ||
+          remotePath.startsWith('https://')) {
+        resolved.add(
+          TrackItem(
+            id: trackId,
+            path: remotePath,
+            title: title,
+            artist: artist,
+            durationMs: durationMs,
+          ),
+        );
+        continue;
+      }
+
+      if (host != null && filePort != null) {
+        final streamUrl = Uri(
+          scheme: 'http',
+          host: host,
+          port: filePort,
+          path: '/track',
+          queryParameters: {'path': remotePath},
+        ).toString();
+        resolved.add(
+          TrackItem(
+            id: trackId,
+            path: streamUrl,
+            title: title,
+            artist: artist,
+            durationMs: durationMs,
+          ),
+        );
+        continue;
+      }
 
       var localPath = remotePath;
       if (!await File(remotePath).exists() &&
@@ -630,6 +690,34 @@ class PartySessionController extends StateNotifier<PartyState> {
     } finally {
       client.close(force: true);
     }
+  }
+
+  (int, int)? _parseRange(String? header, int totalLength) {
+    if (header == null || !header.startsWith('bytes=')) {
+      return null;
+    }
+
+    final value = header.substring(6).trim();
+    final dash = value.indexOf('-');
+    if (dash <= 0) {
+      return null;
+    }
+
+    final start = int.tryParse(value.substring(0, dash).trim());
+    if (start == null || start < 0 || start >= totalLength) {
+      return null;
+    }
+
+    final endText = value.substring(dash + 1).trim();
+    final endParsed = endText.isEmpty ? totalLength - 1 : int.tryParse(endText);
+    final end = (endParsed == null || endParsed >= totalLength)
+        ? totalLength - 1
+        : endParsed;
+    if (end < start) {
+      return null;
+    }
+
+    return (start, end);
   }
 
   @override
