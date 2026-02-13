@@ -44,9 +44,7 @@ class AppAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
     queue.add(mediaItems);
     await _player.setAudioSources(
-      mediaItems
-          .map((media) => AudioSource.file(media.id, tag: media))
-          .toList(growable: false),
+      mediaItems.map(_sourceForMedia).toList(growable: false),
     );
     _syncMediaItem(_player.currentIndex);
     _broadcastState();
@@ -287,5 +285,17 @@ class AppAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         queueIndex: _player.currentIndex,
       ),
     );
+  }
+
+  AudioSource _sourceForMedia(MediaItem media) {
+    final id = media.id;
+    if (id.startsWith('http://') || id.startsWith('https://')) {
+      return AudioSource.uri(
+        Uri.parse(id),
+        tag: media,
+        headers: const {'User-Agent': 'Mozilla/5.0'},
+      );
+    }
+    return AudioSource.file(id, tag: media);
   }
 }

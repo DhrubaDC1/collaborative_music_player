@@ -558,6 +558,20 @@ class PartySessionController extends StateNotifier<PartyState> {
       final artist = item['artist'] as String?;
       final durationMs = item['durationMs'] as int?;
 
+      if (remotePath.startsWith('http://') ||
+          remotePath.startsWith('https://')) {
+        resolved.add(
+          TrackItem(
+            id: trackId,
+            path: remotePath,
+            title: title,
+            artist: artist,
+            durationMs: durationMs,
+          ),
+        );
+        continue;
+      }
+
       var localPath = remotePath;
       if (!await File(remotePath).exists() &&
           host != null &&

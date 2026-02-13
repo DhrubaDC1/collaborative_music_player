@@ -3,15 +3,31 @@ import 'package:collaborative_music_player/core/widgets/glass_panel.dart';
 import 'package:collaborative_music_player/domain/track_item.dart';
 import 'package:collaborative_music_player/services/audio/audio_providers.dart';
 import 'package:collaborative_music_player/services/party/party_session_service.dart';
+import 'package:collaborative_music_player/services/youtube/youtube_audio_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class LibraryTab extends ConsumerWidget {
+class LibraryTab extends ConsumerStatefulWidget {
   const LibraryTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryTab> createState() => _LibraryTabState();
+}
+
+class _LibraryTabState extends ConsumerState<LibraryTab> {
+  final _youtubeController = TextEditingController();
+  final _youtubeService = YoutubeAudioService();
+  bool _addingYoutube = false;
+
+  @override
+  void dispose() {
+    _youtubeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final queueAsync = ref.watch(queueProvider);
     final partyState = ref.watch(partySessionProvider);
 
@@ -27,7 +43,7 @@ class LibraryTab extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Import local files and build the shared queue.',
+            'Import local files or paste a YouTube link (audio only).',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -37,7 +53,7 @@ class LibraryTab extends ConsumerWidget {
               runSpacing: 12,
               children: [
                 FilledButton.icon(
-                  onPressed: () => _importLocalTracks(ref),
+                  onPressed: _importLocalTracks,
                   icon: const Icon(Icons.add_circle_outline),
                   label: const Text('Import Files'),
                 ),
@@ -51,6 +67,41 @@ class LibraryTab extends ConsumerWidget {
                     avatar: const Icon(Icons.wifi_tethering, size: 18),
                     label: Text('Hosting ${partyState.peers.length} peers'),
                   ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          GlassPanel(
+            blur: 14,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Add from YouTube',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _youtubeController,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'https://www.youtube.com/watch?v=...',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: _addingYoutube ? null : _addYoutubeTrack,
+                  icon: _addingYoutube
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_circle_outline_rounded),
+                  label: Text(
+                    _addingYoutube ? 'Resolving...' : 'Add YouTube Audio',
+                  ),
+                ),
               ],
             ),
           ),
@@ -83,7 +134,7 @@ class LibraryTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _importLocalTracks(WidgetRef ref) async {
+  Future<void> _importLocalTracks() async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
@@ -96,6 +147,34 @@ class LibraryTab extends ConsumerWidget {
 
     final tracks = paths.map(TrackItem.fromPath).toList(growable: false);
     await ref.read(audioHandlerProvider).appendTracks(tracks);
+  }
+
+  Future<void> _addYoutubeTrack() async {
+    final url = _youtubeController.text.trim();
+    if (url.isEmpty) {
+      return;
+    }
+    setState(() => _addingYoutube = true);
+    try {
+      final track = await _youtubeService.resolveTrack(url);
+      await ref.read(audioHandlerProvider).appendTracks(<TrackItem>[track]);
+      _youtubeController.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Added: ${track.title}')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add YouTube link: $error')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _addingYoutube = false);
+      }
+    }
   }
 }
 
