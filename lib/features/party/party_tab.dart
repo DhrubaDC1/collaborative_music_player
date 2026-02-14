@@ -1,4 +1,8 @@
 import 'package:collaborative_music_player/core/widgets/glass_panel.dart';
+import 'package:collaborative_music_player/design_system/components/glass_button.dart';
+import 'package:collaborative_music_player/design_system/components/glass_input.dart';
+import 'package:collaborative_music_player/design_system/components/status_pill.dart';
+import 'package:collaborative_music_player/services/party/party_models.dart';
 import 'package:collaborative_music_player/services/party/party_session_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,26 +41,48 @@ class _PartyTabState extends ConsumerState<PartyTab> {
             'Party Session',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
-          const SizedBox(height: 6),
-          Text(
-            'LAN-only collaborative mode with synchronized local playback.',
-            style: Theme.of(context).textTheme.bodyMedium,
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              StatusPill(
+                label: state.status.name.toUpperCase(),
+                tone: switch (state.status) {
+                  PartyConnectionStatus.connected => StatusTone.success,
+                  PartyConnectionStatus.hosting => StatusTone.warning,
+                  PartyConnectionStatus.error => StatusTone.error,
+                  _ => StatusTone.info,
+                },
+              ),
+              if (state.isConnected)
+                StatusPill(
+                  label: 'Peers ${state.peers.length}',
+                  tone: StatusTone.info,
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           GlassPanel(
+            radius: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'Host or Join',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
                 Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
-                    FilledButton.icon(
+                    GlassButton(
                       onPressed: state.isConnected
                           ? null
                           : () => controller.createSession(),
-                      icon: const Icon(Icons.campaign_rounded),
-                      label: const Text('Create Party'),
+                      icon: Icons.campaign_rounded,
+                      label: 'Create Party',
                     ),
                     OutlinedButton.icon(
                       onPressed: state.isConnected
@@ -75,28 +101,23 @@ class _PartyTabState extends ConsumerState<PartyTab> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                TextField(
+                GlassInput(
                   controller: _hostController,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Host IP',
-                    hintText: '192.168.x.x',
-                  ),
+                  hint: '192.168.x.x',
+                  label: 'Host IP',
                 ),
                 const SizedBox(height: 10),
-                TextField(
+                GlassInput(
                   controller: _portController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Port',
-                  ),
+                  hint: '40440',
+                  label: 'Port',
                 ),
-                const SizedBox(height: 12),
-                Text('Status: ${state.status.name}'),
                 if (state.message != null) ...[
-                  const SizedBox(height: 4),
-                  Text(state.message!),
+                  const SizedBox(height: 10),
+                  Text(
+                    state.message!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ],
             ),
@@ -104,13 +125,14 @@ class _PartyTabState extends ConsumerState<PartyTab> {
           if (state.isHost && controller.joinPayload.isNotEmpty) ...[
             const SizedBox(height: 16),
             GlassPanel(
+              radius: 24,
               child: Column(
                 children: [
                   Text(
-                    'Scan to Join',
+                    'Invite with QR',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   QrImageView(data: controller.joinPayload, size: 220),
                   const SizedBox(height: 8),
                   SelectableText(controller.joinPayload),
@@ -120,6 +142,7 @@ class _PartyTabState extends ConsumerState<PartyTab> {
           ],
           const SizedBox(height: 16),
           GlassPanel(
+            radius: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -127,21 +150,50 @@ class _PartyTabState extends ConsumerState<PartyTab> {
                   'Participants',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 if (state.peers.isEmpty)
                   const Text('No guests connected yet.')
                 else
                   ...state.peers.map(
-                    (peer) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const CircleAvatar(
-                        child: Icon(Icons.person_rounded),
+                    (peer) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: GlassPanel(
+                        blur: 10,
+                        radius: 18,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              child: Icon(Icons.person_rounded, size: 18),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(peer.name),
+                                  Text(
+                                    peer.address,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (peer.lastRttMs != null)
+                              StatusPill(
+                                label: '${peer.lastRttMs}ms',
+                                tone: peer.lastRttMs! < 80
+                                    ? StatusTone.success
+                                    : StatusTone.warning,
+                              ),
+                          ],
+                        ),
                       ),
-                      title: Text(peer.name),
-                      subtitle: Text(peer.address),
-                      trailing: peer.lastRttMs == null
-                          ? null
-                          : Text('${peer.lastRttMs}ms'),
                     ),
                   ),
               ],
