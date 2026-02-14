@@ -1,5 +1,4 @@
-import 'dart:ui';
-
+import 'package:collaborative_music_player/design_system/components/glass_surface.dart';
 import 'package:flutter/material.dart';
 
 class GlassPanel extends StatelessWidget {
@@ -18,33 +17,11 @@ class GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final panelColor = isDark
-        ? const Color(0x33131B28)
-        : const Color(0xA8FFFFFF);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: panelColor,
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: isDark ? const Color(0x4DFFFFFF) : const Color(0x66FFFFFF),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
-                blurRadius: 18,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
+    return GlassSurface(
+      padding: padding,
+      radius: radius,
+      blur: blur,
+      child: child,
     );
   }
 }

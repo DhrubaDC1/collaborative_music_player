@@ -1,5 +1,8 @@
 import 'dart:ui';
 
+import 'package:collaborative_music_player/design_system/tokens/glass_tokens.dart';
+import 'package:collaborative_music_player/design_system/tokens/motion_tokens.dart';
+import 'package:collaborative_music_player/design_system/tokens/spacing_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -19,6 +22,11 @@ class AppTheme {
     );
 
     return base.copyWith(
+      extensions: const [
+        GlassTokens.light,
+        MotionTokens.defaults,
+        SpacingTokens.defaults,
+      ],
       textTheme: GoogleFonts.spaceGroteskTextTheme(base.textTheme).copyWith(
         bodyMedium: GoogleFonts.dmSans(textStyle: base.textTheme.bodyMedium),
         bodySmall: GoogleFonts.dmSans(textStyle: base.textTheme.bodySmall),
@@ -48,6 +56,11 @@ class AppTheme {
     );
 
     return base.copyWith(
+      extensions: const [
+        GlassTokens.dark,
+        MotionTokens.defaults,
+        SpacingTokens.defaults,
+      ],
       textTheme: GoogleFonts.spaceGroteskTextTheme(base.textTheme).copyWith(
         bodyMedium: GoogleFonts.dmSans(textStyle: base.textTheme.bodyMedium),
         bodySmall: GoogleFonts.dmSans(textStyle: base.textTheme.bodySmall),
@@ -69,16 +82,11 @@ class FrostedBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final glass =
+        Theme.of(context).extension<GlassTokens>() ??
+        (isDark ? GlassTokens.dark : GlassTokens.light);
     return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF070A0E), Color(0xFF121722), Color(0xFF0A1218)]
-              : const [Color(0xFFF6F3EE), Color(0xFFE6E1D7), Color(0xFFF9F8F3)],
-        ),
-      ),
+      decoration: BoxDecoration(gradient: glass.backgroundGradient),
       child: Stack(
         fit: StackFit.expand,
         children: [
