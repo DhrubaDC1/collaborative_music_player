@@ -1,5 +1,8 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:collaborative_music_player/core/widgets/glass_panel.dart';
+import 'package:collaborative_music_player/design_system/components/glass_button.dart';
+import 'package:collaborative_music_player/design_system/components/glass_input.dart';
+import 'package:collaborative_music_player/design_system/components/status_pill.dart';
 import 'package:collaborative_music_player/domain/track_item.dart';
 import 'package:collaborative_music_player/services/audio/audio_providers.dart';
 import 'package:collaborative_music_player/services/party/party_session_service.dart';
@@ -37,42 +40,48 @@ class _LibraryTabState extends ConsumerState<LibraryTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 12),
-          Text(
-            'Local Library',
-            style: Theme.of(context).textTheme.headlineMedium,
+          Text('Library', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              const StatusPill(label: 'Local Music', tone: StatusTone.info),
+              const StatusPill(
+                label: 'YouTube Audio',
+                tone: StatusTone.success,
+              ),
+              if (partyState.isHost)
+                StatusPill(
+                  label: 'Hosting ${partyState.peers.length}',
+                  tone: StatusTone.warning,
+                ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Import local files or paste a YouTube link (audio only).',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           GlassPanel(
+            radius: 24,
             child: Wrap(
               spacing: 12,
               runSpacing: 12,
               children: [
-                FilledButton.icon(
+                GlassButton(
+                  label: 'Import Files',
+                  icon: Icons.folder_open_rounded,
                   onPressed: _importLocalTracks,
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text('Import Files'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => ref.read(audioHandlerProvider).clearQueue(),
                   icon: const Icon(Icons.clear_all_rounded),
                   label: const Text('Clear Queue'),
                 ),
-                if (partyState.isHost)
-                  Chip(
-                    avatar: const Icon(Icons.wifi_tethering, size: 18),
-                    label: Text('Hosting ${partyState.peers.length} peers'),
-                  ),
               ],
             ),
           ),
           const SizedBox(height: 12),
           GlassPanel(
-            blur: 14,
+            blur: 16,
+            radius: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -80,27 +89,16 @@ class _LibraryTabState extends ConsumerState<LibraryTab> {
                   'Add from YouTube',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 8),
-                TextField(
+                const SizedBox(height: 10),
+                GlassInput(
                   controller: _youtubeController,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'https://www.youtube.com/watch?v=...',
-                  ),
+                  hint: 'https://www.youtube.com/watch?v=...',
                 ),
                 const SizedBox(height: 10),
-                FilledButton.icon(
+                GlassButton(
                   onPressed: _addingYoutube ? null : _addYoutubeTrack,
-                  icon: _addingYoutube
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.play_circle_outline_rounded),
-                  label: Text(
-                    _addingYoutube ? 'Resolving...' : 'Add YouTube Audio',
-                  ),
+                  icon: Icons.play_circle_outline_rounded,
+                  label: _addingYoutube ? 'Resolving...' : 'Add YouTube Audio',
                 ),
               ],
             ),
@@ -111,7 +109,9 @@ class _LibraryTabState extends ConsumerState<LibraryTab> {
               data: (queue) {
                 if (queue.isEmpty) {
                   return const Center(
-                    child: Text('No tracks yet. Import local music to start.'),
+                    child: Text(
+                      'No tracks yet. Import local music or add YouTube audio.',
+                    ),
                   );
                 }
 
@@ -188,7 +188,7 @@ class _TrackTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return GlassPanel(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      radius: 18,
+      radius: 20,
       blur: 12,
       child: ListTile(
         contentPadding: EdgeInsets.zero,
@@ -199,14 +199,22 @@ class _TrackTile extends ConsumerWidget {
             await ref.read(partySessionProvider.notifier).hostPlay();
           }
         },
-        leading: const CircleAvatar(
-          backgroundColor: Color(0x66FF4D2E),
-          child: Icon(Icons.music_note_rounded),
+        leading: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: const LinearGradient(
+              colors: [Color(0x66FF4D2E), Color(0x6638F2C7)],
+            ),
+          ),
+          child: const Icon(Icons.music_note_rounded),
         ),
         title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(item.artist ?? 'Unknown artist'),
         trailing: Text(
           item.duration == null ? '--:--' : _formatDuration(item.duration!),
+          style: Theme.of(context).textTheme.labelLarge,
         ),
       ),
     );
