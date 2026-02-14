@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:collaborative_music_player/core/widgets/glass_panel.dart';
+import 'package:collaborative_music_player/design_system/accessibility/reduced_motion.dart';
 import 'package:collaborative_music_player/design_system/components/glass_button.dart';
 import 'package:collaborative_music_player/design_system/components/glass_input.dart';
 import 'package:collaborative_music_player/design_system/components/status_pill.dart';
@@ -33,6 +34,7 @@ class _LibraryTabState extends ConsumerState<LibraryTab> {
   Widget build(BuildContext context) {
     final queueAsync = ref.watch(queueProvider);
     final partyState = ref.watch(partySessionProvider);
+    final reducedMotion = prefersReducedMotion(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -59,48 +61,59 @@ class _LibraryTabState extends ConsumerState<LibraryTab> {
             ],
           ),
           const SizedBox(height: 14),
-          GlassPanel(
-            radius: 24,
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                GlassButton(
-                  label: 'Import Files',
-                  icon: Icons.folder_open_rounded,
-                  onPressed: _importLocalTracks,
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => ref.read(audioHandlerProvider).clearQueue(),
-                  icon: const Icon(Icons.clear_all_rounded),
-                  label: const Text('Clear Queue'),
-                ),
-              ],
+          RepaintBoundary(
+            child: GlassPanel(
+              radius: 24,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  GlassButton(
+                    label: 'Import Files',
+                    icon: Icons.folder_open_rounded,
+                    onPressed: _importLocalTracks,
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        ref.read(audioHandlerProvider).clearQueue(),
+                    icon: const Icon(Icons.clear_all_rounded),
+                    label: const Text('Clear Queue'),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          GlassPanel(
-            blur: 16,
-            radius: 24,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Add from YouTube',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                GlassInput(
-                  controller: _youtubeController,
-                  hint: 'https://www.youtube.com/watch?v=...',
-                ),
-                const SizedBox(height: 10),
-                GlassButton(
-                  onPressed: _addingYoutube ? null : _addYoutubeTrack,
-                  icon: Icons.play_circle_outline_rounded,
-                  label: _addingYoutube ? 'Resolving...' : 'Add YouTube Audio',
-                ),
-              ],
+          AnimatedContainer(
+            duration: reducedMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: GlassPanel(
+              blur: 16,
+              radius: 24,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Add from YouTube',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  GlassInput(
+                    controller: _youtubeController,
+                    hint: 'https://www.youtube.com/watch?v=...',
+                  ),
+                  const SizedBox(height: 10),
+                  GlassButton(
+                    onPressed: _addingYoutube ? null : _addYoutubeTrack,
+                    icon: Icons.play_circle_outline_rounded,
+                    label: _addingYoutube
+                        ? 'Resolving...'
+                        : 'Add YouTube Audio',
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -115,14 +128,16 @@ class _LibraryTabState extends ConsumerState<LibraryTab> {
                   );
                 }
 
-                return ListView.separated(
-                  itemCount: queue.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final item = queue[index];
-                    return _TrackTile(item: item, index: index);
-                  },
+                return RepaintBoundary(
+                  child: ListView.separated(
+                    itemCount: queue.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final item = queue[index];
+                      return _TrackTile(item: item, index: index);
+                    },
+                  ),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),

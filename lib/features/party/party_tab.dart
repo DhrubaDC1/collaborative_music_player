@@ -1,4 +1,5 @@
 import 'package:collaborative_music_player/core/widgets/glass_panel.dart';
+import 'package:collaborative_music_player/design_system/accessibility/reduced_motion.dart';
 import 'package:collaborative_music_player/design_system/components/glass_button.dart';
 import 'package:collaborative_music_player/design_system/components/glass_input.dart';
 import 'package:collaborative_music_player/design_system/components/status_pill.dart';
@@ -31,6 +32,7 @@ class _PartyTabState extends ConsumerState<PartyTab> {
   Widget build(BuildContext context) {
     final state = ref.watch(partySessionProvider);
     final controller = ref.read(partySessionProvider.notifier);
+    final reducedMotion = prefersReducedMotion(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -63,63 +65,69 @@ class _PartyTabState extends ConsumerState<PartyTab> {
             ],
           ),
           const SizedBox(height: 16),
-          GlassPanel(
-            radius: 24,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Host or Join',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    GlassButton(
-                      onPressed: state.isConnected
-                          ? null
-                          : () => controller.createSession(),
-                      icon: Icons.campaign_rounded,
-                      label: 'Create Party',
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: state.isConnected
-                          ? () => controller.leaveSession()
-                          : () => _joinFromFields(controller),
-                      icon: Icon(
-                        state.isConnected ? Icons.logout : Icons.login,
+          AnimatedContainer(
+            duration: reducedMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: GlassPanel(
+              radius: 24,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Host or Join',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      GlassButton(
+                        onPressed: state.isConnected
+                            ? null
+                            : () => controller.createSession(),
+                        icon: Icons.campaign_rounded,
+                        label: 'Create Party',
                       ),
-                      label: Text(state.isConnected ? 'Leave' : 'Join'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _scanJoinQr,
-                      icon: const Icon(Icons.qr_code_scanner_rounded),
-                      label: const Text('Scan QR'),
+                      OutlinedButton.icon(
+                        onPressed: state.isConnected
+                            ? () => controller.leaveSession()
+                            : () => _joinFromFields(controller),
+                        icon: Icon(
+                          state.isConnected ? Icons.logout : Icons.login,
+                        ),
+                        label: Text(state.isConnected ? 'Leave' : 'Join'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _scanJoinQr,
+                        icon: const Icon(Icons.qr_code_scanner_rounded),
+                        label: const Text('Scan QR'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  GlassInput(
+                    controller: _hostController,
+                    hint: '192.168.x.x',
+                    label: 'Host IP',
+                  ),
+                  const SizedBox(height: 10),
+                  GlassInput(
+                    controller: _portController,
+                    hint: '40440',
+                    label: 'Port',
+                  ),
+                  if (state.message != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      state.message!,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
-                ),
-                const SizedBox(height: 14),
-                GlassInput(
-                  controller: _hostController,
-                  hint: '192.168.x.x',
-                  label: 'Host IP',
-                ),
-                const SizedBox(height: 10),
-                GlassInput(
-                  controller: _portController,
-                  hint: '40440',
-                  label: 'Port',
-                ),
-                if (state.message != null) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    state.message!,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
           if (state.isHost && controller.joinPayload.isNotEmpty) ...[
@@ -141,62 +149,64 @@ class _PartyTabState extends ConsumerState<PartyTab> {
             ),
           ],
           const SizedBox(height: 16),
-          GlassPanel(
-            radius: 24,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Participants',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 12),
-                if (state.peers.isEmpty)
-                  const Text('No guests connected yet.')
-                else
-                  ...state.peers.map(
-                    (peer) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: GlassPanel(
-                        blur: 10,
-                        radius: 18,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          children: [
-                            const CircleAvatar(
-                              child: Icon(Icons.person_rounded, size: 18),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(peer.name),
-                                  Text(
-                                    peer.address,
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
+          RepaintBoundary(
+            child: GlassPanel(
+              radius: 24,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Participants',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  if (state.peers.isEmpty)
+                    const Text('No guests connected yet.')
+                  else
+                    ...state.peers.map(
+                      (peer) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GlassPanel(
+                          blur: 10,
+                          radius: 18,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            children: [
+                              const CircleAvatar(
+                                child: Icon(Icons.person_rounded, size: 18),
                               ),
-                            ),
-                            if (peer.lastRttMs != null)
-                              StatusPill(
-                                label: '${peer.lastRttMs}ms',
-                                tone: peer.lastRttMs! < 80
-                                    ? StatusTone.success
-                                    : StatusTone.warning,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(peer.name),
+                                    Text(
+                                      peer.address,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                  ],
+                                ),
                               ),
-                          ],
+                              if (peer.lastRttMs != null)
+                                StatusPill(
+                                  label: '${peer.lastRttMs}ms',
+                                  tone: peer.lastRttMs! < 80
+                                      ? StatusTone.success
+                                      : StatusTone.warning,
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
