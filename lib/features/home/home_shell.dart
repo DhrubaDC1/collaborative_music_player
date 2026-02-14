@@ -1,5 +1,7 @@
 import 'package:collaborative_music_player/core/theme/app_theme.dart';
 import 'package:collaborative_music_player/core/widgets/glass_panel.dart';
+import 'package:collaborative_music_player/design_system/accessibility/reduced_motion.dart';
+import 'package:collaborative_music_player/design_system/theme/theme_tokens.dart';
 import 'package:collaborative_music_player/features/library/library_tab.dart';
 import 'package:collaborative_music_player/features/now_playing/now_playing_tab.dart';
 import 'package:collaborative_music_player/features/party/party_tab.dart';
@@ -20,6 +22,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     final pages = const [LibraryTab(), NowPlayingTab(), PartyTab()];
+    final duration = prefersReducedMotion(context)
+        ? Duration.zero
+        : context.motion.medium;
     return Scaffold(
       extendBody: true,
       body: FrostedBackground(
@@ -28,7 +33,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           child: Stack(
             children: [
               Positioned.fill(
-                child: IndexedStack(index: _tab, children: pages),
+                child: AnimatedSwitcher(
+                  duration: duration,
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_tab),
+                    child: pages[_tab],
+                  ),
+                ),
               ),
               const _MiniPlayerDock(),
             ],
@@ -83,55 +94,62 @@ class _MiniPlayerDock extends ConsumerWidget {
     }
 
     final isPlaying = playback?.playing ?? false;
+    final duration = prefersReducedMotion(context)
+        ? Duration.zero
+        : context.motion.fast;
     return Align(
       alignment: Alignment.bottomCenter,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 0, 14, 96),
-        child: GlassPanel(
-          blur: 18,
-          radius: 24,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              const CircleAvatar(
-                radius: 18,
-                backgroundColor: Color(0x66FF4D2E),
-                child: Icon(Icons.album_rounded, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    Text(
-                      item.artist ?? 'Unknown Artist',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+        child: AnimatedSlide(
+          duration: duration,
+          offset: Offset.zero,
+          child: GlassPanel(
+            blur: 18,
+            radius: 24,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Color(0x66FF4D2E),
+                  child: Icon(Icons.album_rounded, size: 20),
                 ),
-              ),
-              IconButton.filled(
-                onPressed: () {
-                  if (isPlaying) {
-                    ref.read(audioHandlerProvider).pause();
-                  } else {
-                    ref.read(audioHandlerProvider).play();
-                  }
-                },
-                icon: Icon(
-                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(
+                        item.artist ?? 'Unknown Artist',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                IconButton.filled(
+                  onPressed: () {
+                    if (isPlaying) {
+                      ref.read(audioHandlerProvider).pause();
+                    } else {
+                      ref.read(audioHandlerProvider).play();
+                    }
+                  },
+                  icon: Icon(
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
